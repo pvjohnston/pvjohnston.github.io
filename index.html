@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How pvjohnston.com is made</title>
+  <meta name="description" content="How the research notebook at pvjohnston.com is made: authoring rules, the chemistry lab on Grok Bot, and the checks on the public site.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap header-bar">
+      <a class="wordmark" href="./">pvjohnston<span>.github.io</span></a>
+      <nav class="nav" aria-label="Sections">
+        <a href="#notebook">Notebook</a>
+        <a href="#run">A run</a>
+        <a href="#split">The split</a>
+        <a href="#authoring">Authoring</a>
+        <a href="#code">The code</a>
+        <a href="build.html">The build</a>
+        <a class="nav-cta" href="https://pvjohnston.com">pvjohnston.com</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <header class="hero">
+      <div class="wrap">
+        <p class="kicker">Peter V. Johnston</p>
+        <h1>How pvjohnston.com is made</h1>
+        <p class="lede">
+          <a href="https://pvjohnston.com">pvjohnston.com</a> is a published
+          notebook of private chemistry and computation. This page is on the
+          person account. It shows the files, the people, and the Mac.
+        </p>
+      </div>
+    </header>
+
+    <section class="section" id="notebook">
+      <div class="wrap">
+        <p class="kicker">01</p>
+        <h2>The notebook</h2>
+        <p>
+          A note on the site is the end of a short pipeline: question, branch,
+          experiment, draft, checks, pull request, CI, publish. Generated
+          numbers, figures, and tables are supposed to come from committed
+          artifacts. The source is still
+          <a href="https://github.com/noprofits-org/pvjohnston.com">noprofits-org/pvjohnston.com</a>.
+          This GitHub account is the person.
+        </p>
+        <p>
+          Every new note is one of two forms, chosen before drafting.
+        </p>
+        <div class="badge-row">
+          <span class="badge badge-research">research</span>
+          <span class="badge badge-understanding">understanding</span>
+          <span class="badge badge-falsified">falsified</span>
+          <span class="badge badge-traceable">traceable</span>
+        </div>
+        <div class="cards cards-2">
+          <article class="card">
+            <p class="who">Research</p>
+            <h3>A stated test</h3>
+            <p>
+              A contribution sentence, a hypothesis, and what would falsify it.
+              Written as Abstract through References. The verdict
+              (supported, falsified, inconclusive) is on our hypothesis, not
+              on the source paper.
+            </p>
+          </article>
+          <article class="card">
+            <p class="who">Understanding</p>
+            <h3>How something works</h3>
+            <p>
+              One explanatory question, in dependency order, with computed
+              demonstrations and a stop where the explanation no longer
+              reaches. No novelty claim.
+            </p>
+          </article>
+        </div>
+        <p>
+          We are outsiders learning in public. If a published number does not
+          come out on our setup, we write that it did not reproduce for us
+          under these conditions.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="run">
+      <div class="wrap">
+        <p class="kicker">02</p>
+        <h2>A run</h2>
+        <p>
+          Grok Bot is a chat app where I keep a small group of AI assistants.
+          Each one has a name, a job, and a memory that lasts. They can message
+          each other the way labmates Slack. I talk to them from my phone or
+          computer. They can read the lab files, draft notes, and help write
+          the public site. They do not replace the calculations. Those still
+          run on my Mac.
+        </p>
+        <ol class="pipeline" aria-label="A chemistry run">
+          <li class="step">
+            <span class="step-n">01</span>
+            <div>
+              <h3>Paper and question</h3>
+              <p>Johnson, E. C. et al. <em>Chem. Sci.</em> <strong>2025</strong>, 16, 2382–2390. They invited geometry/bond rotation studies. We took that invitation.</p>
+            </div>
+          </li>
+          <li class="step gate">
+            <span class="step-n">02</span>
+            <div>
+              <h3>PLAN and preregistration</h3>
+              <p><code>johnson-haloacetate</code>, frozen 2026-08-23, before any geometry is optimized.</p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-n">03</span>
+            <div>
+              <h3>Jobs on the Mac</h3>
+              <p>Private folder. Psi4. Not the chat.</p>
+            </div>
+          </li>
+          <li class="step gate">
+            <span class="step-n">04</span>
+            <div>
+              <h3>Bayes</h3>
+              <p>Only trusts numbers that come out of the raw output files.</p>
+            </div>
+          </li>
+          <li class="step gate">
+            <span class="step-n">05</span>
+            <div>
+              <h3>da Vinci</h3>
+              <p>Draws the figures from those numbers, and only from points that actually converged.</p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-n">06</span>
+            <div>
+              <h3>The site</h3>
+              <p>Published notebook of the private run.</p>
+            </div>
+          </li>
+        </ol>
+        <p>
+          Two files.
+          <a href="lab/johnson-haloacetate/PREREGISTRATION.md"><code>PREREGISTRATION.md</code></a>
+          holds the hypothesis and falsifier.
+          <a href="lab/johnson-haloacetate/PLAN.md"><code>PLAN.md</code></a>
+          holds the protocol. Amendments go in <code>JOURNAL.md</code>.
+          The Mac folder is <code>~/Molecules/johnson-haloacetate/</code>.
+        </p>
+        <div class="cards cards-2">
+          <article class="card">
+            <p class="who">PREREGISTRATION.md</p>
+            <h3>Hypothesis and falsifier</h3>
+            <p>Does not change after the first energy is seen. Either outcome is publishable.</p>
+          </article>
+          <article class="card">
+            <p class="who">PLAN.md</p>
+            <h3>Protocol</h3>
+            <p>What gets computed, when to stop, what we will not claim.</p>
+          </article>
+        </div>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">lab/johnson-haloacetate/PREREGISTRATION.md</span>## Question
+
+Does carboxylate oxygen charge oscillate with CX3 rotation, with larger amplitude for CCl3COO− than for CF3COO−?
+
+## Hypothesis
+
+On a relaxed CX3 rotation, Hirshfeld and MBIS oxygen charges (and the COO sum) oscillate with the X–Cα–C–O dihedral. Peak-to-peak amplitude is larger for CCl3COO− than for CF3COO−. Acetate is the flat control.
+
+## Falsifier
+
+1. q(O) is flat vs dihedral on both haloacetates, or
+2. CF3 amplitude ≥ CCl3 amplitude.
+
+Either outcome is publishable.</pre>
+          <div class="pair-en">
+            <h3>What this file is</h3>
+            <ol>
+              <li>The question, the guess, and the two ways the guess fails.</li>
+              <li>Written 2026-08-23, before any geometry is optimized.</li>
+              <li>A later note on pvjohnston.com will report whichever outcome we get.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">lab/johnson-haloacetate/PLAN.md</span>If (3) fails in both charge schemes, stop. Do not scan. Write that the charge order did not reproduce for us under these conditions.</pre>
+          <div class="pair-en">
+            <h3>Rematch, first</h3>
+            <ol>
+              <li>Optimize CH3COO−, CF3COO−, CClF2COO−, and CCl3COO− before starting a rotation.</li>
+              <li>If both Hirshfeld and MBIS fail to make q(O) more negative on CF3 than on CCl3, we do not scan.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">lab/johnson-haloacetate/PLAN.md</span>Do not inspect q vs φ for an ion until that ion's grid is finished or has failed.
+
+Plotted lines connect adjacent both-converged points only. Unconverged points may be marked; they do not carry a claim.</pre>
+          <div class="pair-en">
+            <h3>During the scan</h3>
+            <ol>
+              <li>No q vs φ until that ion’s grid is done.</li>
+              <li>Unconverged points can be marked. They are not used in a claim.</li>
+              <li>Site numbers come from <code>research/johnson-haloacetate/metrics.json</code>.</li>
+            </ol>
+          </div>
+        </div>
+        <p>
+          For a run that already reached the site, see
+          <a href="https://github.com/noprofits-org/pvjohnston.com/blob/main/research/hillel-triplet/PREREGISTRATION.md">research/hillel-triplet</a>
+          and <a href="#code">the code</a> below.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="split">
+      <div class="wrap">
+        <p class="kicker">03</p>
+        <h2>The chemistry team</h2>
+        <p>
+          Four assistants, plus me. The person who wants a clean figure is not
+          the one checking the CSV, and the claim is frozen before anyone looks
+          at the scan.
+        </p>
+        <div class="cards cards-4">
+          <article class="card">
+            <p class="who">Heisenberg</p>
+            <h3>Experiments</h3>
+            <p>Pick the question, write the plan, freeze what would kill the claim, and say what gets computed.</p>
+          </article>
+          <article class="card">
+            <p class="who">Quill</p>
+            <h3>Papers and writing</h3>
+            <p>Finds papers and open questions, and handles the public-facing writing.</p>
+          </article>
+          <article class="card">
+            <p class="who">Bayes</p>
+            <h3>Numbers</h3>
+            <p>Only trusts numbers that come out of the raw output files.</p>
+          </article>
+          <article class="card">
+            <p class="who">da Vinci</p>
+            <h3>Figures</h3>
+            <p>Draws the figures from those numbers, and only from points that actually converged.</p>
+          </article>
+        </div>
+        <p>
+          Calculations run on the Mac.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">research/hillel-triplet/make_figures.py</span>both_ok = [ok0 and ok1 and g is not None for ok0, ok1, g in zip(s0_ok, t1_ok, gaps)]
+plot_segments(ax, angles, gaps, both_ok, color=M4, linewidth=1.8, marker="o", markersize=6, zorder=3)
+un_x = [a for a, g, ok0, ok1 in zip(angles, gaps, s0_ok, t1_ok) if g is not None and not (ok0 and ok1)]
+un_y = [g for g, ok0, ok1 in zip(gaps, s0_ok, t1_ok) if g is not None and not (ok0 and ok1)]
+ax.plot(un_x, un_y, "x", color=M4, markersize=7, markeredgewidth=1.6, zorder=4)</pre>
+          <div class="pair-en">
+            <h3>In make_figures.py</h3>
+            <ol>
+              <li>The line is only both-converged points.</li>
+              <li>Unconverged points are ×.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="authoring">
+      <div class="wrap">
+        <p class="kicker">04</p>
+        <h2>Authoring</h2>
+        <p>
+          <a href="https://github.com/noprofits-org/pvjohnston.com/blob/main/notes/blog-authoring.md"><code>notes/blog-authoring.md</code></a>
+          is the contract for a note. Research notes use IMRaD. Understanding
+          notes do not get a hypothesis glued on. This page can be easier to
+          read than a note. The notes are still written for someone who may
+          know the subject better than we do.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">notes/blog-authoring.md</span>contribution: X, which is not in [source].
+
+Then name its type from the list below. **If you cannot write that sentence,
+you do not have a post** — put the topic back on the shelf and pull another.</pre>
+          <div class="pair-en">
+            <h3>Before drafting</h3>
+            <ol>
+              <li>Write the contribution sentence first.</li>
+              <li>If you cannot, it is not a Research note that day.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="code">
+      <div class="wrap">
+        <p class="kicker">05</p>
+        <h2>The code</h2>
+        <p>
+          Each experiment is a directory under <code>research/</code>, started
+          from <code>research/_TEMPLATE/</code>. The post sets
+          <code>experiment: &lt;slug&gt;</code> and cites
+          <code>[name]{.metric}</code>. The build reads
+          <code>metrics.json</code> and fails if the name is missing.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">scripts/verify-metrics.mjs</span>const actual = sha256(inputPath);
+if (actual !== String(input.sha256).toLowerCase()) {
+  errors.push(`${relative(root, metricsPath)}: SHA-256 mismatch for ${input.path}`);
+}</pre>
+          <div class="pair-en">
+            <h3>verify-metrics.mjs</h3>
+            <ol>
+              <li>Each metrics file lists its input paths and SHA-256 hashes.</li>
+              <li>If a file changed, the check fails.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">research/hillel-triplet/generate-metrics.mjs</span>function bothConverged(point) {
+  if (point.both_converged === true) return true;
+  if (point.both_converged === false) return false;
+  return point.s0_converged === true && point.t1_converged === true;
+}</pre>
+          <div class="pair-en">
+            <h3>generate-metrics.mjs</h3>
+            <ol>
+              <li>A crossing counts only if both ends converged.</li>
+              <li>The Hillel note’s claim flag is <code>m4_has_claim_crossing</code>.</li>
+            </ol>
+          </div>
+        </div>
+        <p>
+          Work is on a branch. <code>verify-bib.mjs</code>,
+          <code>verify-metrics.mjs</code>, <code>verify-site.mjs</code>, and a
+          full Hakyll build run in CI. Merge deploys. The checks can show that
+          a named metric matches its artifact. They cannot show that the
+          question was worth asking. The compiler itself — Markdown to HTML,
+          TikZ, citations, print CSS, GitHub Actions — is on
+          <a href="build.html">the build</a> page.
+        </p>
+        <p>
+          Published example:
+          <a href="https://pvjohnston.com/posts/2026-08-22-does-push-pull-abolish-the-s0-t1-crossing.html">Does Hillel’s 2024 push-pull sentence hold for 4-dimethylamino-4′-nitroazobenzene?</a>
+          Hypothesis falsified at this level of theory.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p class="footer-word">pvjohnston.github.io</p>
+      <p>
+        Draft. Sources: the public notebook, Heisenberg’s 2026-08-23 brief, and
+        the johnson-haloacetate PLAN and preregistration from the same day.
+        <a href="SOURCES.md">SOURCES.md</a>.
+      </p>
+      <p>
+        <a href="https://pvjohnston.com">pvjohnston.com</a>
+        ·
+        <a href="https://pvjohnston.com/colophon.html">colophon</a>
+        ·
+        <a href="https://github.com/pvjohnston">github.com/pvjohnston</a>
+      </p>
+    </div>
+  </footer>
+  <script src="main.js"></script>
+</body>
+</html>

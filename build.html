@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How the Hakyll build works</title>
+  <meta name="description" content="Chunk-by-chunk reading of the Hakyll/Haskell compiler that turns Markdown notes into pvjohnston.com, including TikZ, citations, print CSS, and GitHub Pages deploy.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap header-bar">
+      <a class="wordmark" href="./">pvjohnston<span>.github.io</span></a>
+      <nav class="nav" aria-label="Sections">
+        <a href="./">Lab</a>
+        <a href="build.html" aria-current="true">The build</a>
+        <a class="nav-cta" href="https://pvjohnston.com">pvjohnston.com</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <header class="hero">
+      <div class="wrap">
+        <p class="kicker">noprofits-org/pvjohnston.com · d3ba5c69</p>
+        <h1>How the Hakyll build works</h1>
+        <p class="lede">
+          The notebook at <a href="https://pvjohnston.com">pvjohnston.com</a>
+          is a static site. A post starts as Markdown in
+          <code>posts/</code>. The Haskell program <code>site</code> writes
+          HTML into <code>_site/</code>. GitHub Actions copies that directory
+          to Pages. This page walks the code that does that, file by file.
+          First pass against commit <code>d3ba5c69</code>.
+        </p>
+      </div>
+    </header>
+
+    <section class="section" id="map">
+      <div class="wrap">
+        <p class="kicker">01</p>
+        <h2>What sits on disk</h2>
+        <p>
+          The Cabal package is <code>pvjohnston-site</code>. The executable
+          is <code>site</code> (<code>app/site.hs</code>). Almost all of the
+          rules live in the library under <code>lib/Blog/</code>.
+        </p>
+        <ul class="toc">
+          <li><a href="#entry">Entry · app/site.hs</a></li>
+          <li><a href="#rules">Rules · Blog.Site</a></li>
+          <li><a href="#compiler">Post compiler · Blog.Compilers</a></li>
+          <li><a href="#citations">Citations</a></li>
+          <li><a href="#math">Math · Pandoc and MathJax</a></li>
+          <li><a href="#mhchem">mhchem</a></li>
+          <li><a href="#tikz">TikZ · Blog.TikZ</a></li>
+          <li><a href="#metrics">Metrics · Blog.Metrics</a></li>
+          <li><a href="#templates">Templates</a></li>
+          <li><a href="#screen">Screen and mobile CSS</a></li>
+          <li><a href="#print">Print CSS</a></li>
+          <li><a href="#tests">stack test</a></li>
+          <li><a href="#verify">verify-*.mjs</a></li>
+          <li><a href="#deploy">Deploy · .github/workflows/deploy.yml</a></li>
+          <li><a href="#flow">Map · .md to HTML and print</a></li>
+        </ul>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">pvjohnston-site.cabal</span>executable site
+  main-is:             site.hs
+  hs-source-dirs:      app
+  build-depends:       base == 4.*
+                     , hakyll >= 4.15
+                     , pvjohnston-site
+  ghc-options:         -threaded
+
+library
+  hs-source-dirs:      lib
+  exposed-modules:     Blog.TikZ
+                       Blog.Metrics
+                       Blog.Compilers
+                       Blog.Context
+                       Blog.Feed
+                       Blog.Site</pre>
+          <div class="pair-en">
+            <h3>Package layout</h3>
+            <ol>
+              <li><code>stack exec site build</code> runs this executable.</li>
+              <li>GHC is the one pinned by Stackage LTS 23.8 in <code>stack.yaml</code> (GHC 9.8.4, per the workflow comment).</li>
+              <li><code>test-suite site-test</code> is a second executable over the same library.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="entry">
+      <div class="wrap">
+        <p class="kicker">02</p>
+        <h2>Entry</h2>
+        <p>
+          <code>main</code> looks at one environment variable, then hands
+          control to Hakyll.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">app/site.hs</span>main :: IO ()
+main = do
+  previewDrafts &lt;- isJust &lt;$&gt; lookupEnv "PREVIEW_DRAFTS"
+  hakyll (siteRules previewDrafts)</pre>
+          <div class="pair-en">
+            <h3>What this does</h3>
+            <ol>
+              <li><code>hakyll</code> is Hakyll’s CLI: <code>build</code>, <code>rebuild</code>, <code>watch</code>, <code>clean</code>.</li>
+              <li>If <code>PREVIEW_DRAFTS</code> is set to anything, posts with YAML <code>draft: true</code> (that exact string) are built. CI does not set it. Otherwise they never enter the Hakyll store: no page, listing, feed, or sitemap row. <code>draft: yes</code> still publishes.</li>
+              <li>All match/route/compile tables are <code>siteRules</code> in <code>lib/Blog/Site.hs</code>.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="rules">
+      <div class="wrap">
+        <p class="kicker">03</p>
+        <h2>Rules</h2>
+        <p>
+          Hakyll is a dependency graph. Each <code>match</code> says: these
+          files, this output path, this compiler. A post is one rule among
+          several. Static pages (about, résumé, contact, colophon) use plain
+          <code>pandocCompiler</code>. Posts use <code>bibtexMathCompiler</code>.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">lib/Blog/Site.hs</span>    match (fromList staticPages) $ do
+        route   $ setExtension "html"
+        compile $ pandocCompiler
+            &gt;&gt;= loadAndApplyTemplate "templates/default.html" baseCtx
+            &gt;&gt;= relativizeUrls
+
+    let publishable metadata = previewDrafts || not (isDraft metadata)
+    matchMetadata "posts/*" publishable $ do
+        route $ setExtension "html"
+        compile $ bibtexMathCompiler cslFile bibFile
+            &gt;&gt;= saveSnapshot "content"
+            &gt;&gt;= loadAndApplyTemplate "templates/post.html"    postCtx
+            &gt;&gt;= loadAndApplyTemplate "templates/default.html" postCtx
+            &gt;&gt;= relativizeUrls</pre>
+          <div class="pair-en">
+            <h3>Markdown → HTML path</h3>
+            <ol>
+              <li><code>setExtension "html"</code> turns <code>posts/2026-08-22-….md</code> into <code>_site/posts/2026-08-22-….html</code>.</li>
+              <li>The snapshot named <code>content</code> is the body after Pandoc, before the chrome templates. Atom/RSS take the last 20 of those bodies (the YAML description is overwritten). The home featured reel and <code>hasFigure</code> also read it.</li>
+              <li><code>post.html</code> wraps the article. <code>default.html</code> adds <code>&lt;html&gt;</code>, nav, footer, CSS, MathJax.</li>
+              <li><code>relativizeUrls</code> rewrites site-root links so a page still works if opened as a file.</li>
+            </ol>
+          </div>
+        </div>
+        <p>
+          Other rules in the same file, in order of appearance:
+        </p>
+        <ul>
+          <li>Load <code>bib/style.csl</code> and <code>bib/bibliography.bib</code> as Hakyll resources (citation compilers, not pages).</li>
+          <li>Copy <code>images/*</code>, <code>js/*</code>, <code>fonts/*</code>, <code>downloads/*</code>, <code>LICENSE</code>.</li>
+          <li>Compile <code>research/*/metrics.json</code> with <code>metricsCompiler</code> (parse or fail). Copy <code>research/metrics.schema.json</code>.</li>
+          <li>Copy every path listed in each experiment’s <code>PUBLIC_FILES.txt</code>, plus the manifest itself, except paths another rule already owns. A listed path that is missing is dropped here; <code>verify-site.mjs</code> is the gate.</li>
+          <li>Compress <code>css/*</code>.</li>
+          <li>Build tag pages for tags that appear on at least two posts (metadata scan includes drafts; the list on the page does not). Tag pages are not in the sitemap.</li>
+          <li>Build <code>writing.html</code> and <code>archive.html</code> as the same year-grouped listing.</li>
+          <li>Fill <code>index.html</code> with up to five figure-having posts in a reel and eight latest rows.</li>
+          <li>Write <code>atom.xml</code>, <code>rss.xml</code>, <code>sitemap.xml</code> (posts, index, writing/archive, static pages — not tags or 404).</li>
+          <li>Copy <code>404.html</code> and <code>robots.txt</code> (after the sitemap rule).</li>
+          <li>Compile <code>templates/*</code> with <code>templateCompiler</code>.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section" id="compiler">
+      <div class="wrap">
+        <p class="kicker">04</p>
+        <h2>The post compiler</h2>
+        <p>
+          <code>bibtexMathCompiler</code> is the only place a research note
+          becomes HTML. The body of the function is one pipeline.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">lib/Blog/Compilers.hs</span>  metrics &lt;- loadPostMetrics
+
+  getResourceBody
+    &gt;&gt;= readPandocBiblio readerOptions csl bib
+    &gt;&gt;= \pandoc -&gt; do
+          withMetrics &lt;- walkM (metricFilter metrics) pandoc
+          withTikz &lt;- walkM tikzFilter withMetrics
+          return $ writePandocWith writerOptions (walk wrapTables withTikz)</pre>
+          <div class="pair-en">
+            <h3>Order</h3>
+            <ol>
+              <li>Read the Markdown, resolving <code>[@citekey]</code> against the CSL + BibTeX already loaded.</li>
+              <li>Replace <code>[name]{.metric}</code> spans. A bad span fails the whole Hakyll build. A bad TikZ diagram does not.</li>
+              <li>Replace fenced <code>```{.tikzpicture}</code> blocks with inline SVG (or an error box). A <code>\begin{tikzpicture}</code> in prose is not compiled.</li>
+              <li>Wrap tables in <code>div.table-scroll</code>.</li>
+              <li>Write HTML with MathJax math and pygments highlighting.</li>
+            </ol>
+          </div>
+        </div>
+        <p>
+          Reader and writer options are not the same list. The reader starts
+          from <code>pandocExtensions</code> and adds <code>Ext_raw_html</code>
+          and <code>Ext_raw_tex</code> (off by default; needed so
+          <code>\ce{…}</code> outside already-tokenized math can survive as
+          TeX). The writer adds dollar math, double-backslash math,
+          <code>Ext_latex_macros</code>, fenced code, and
+          <code>writerHTMLMathMethod = MathJax ""</code>.
+          <code>{.metric}</code> is a reader bracketed span.
+          Static pages never enter this function, so colophon and about have
+          no citations, metrics, or TikZ. They still load MathJax in
+          <code>default.html</code>.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="citations">
+      <div class="wrap">
+        <p class="kicker">05</p>
+        <h2>Citations</h2>
+        <p>
+          Hakyll’s <code>readPandocBiblio</code> is Pandoc citeproc. The style
+          is ACS (<code>bib/style.csl</code>). The database is
+          <code>bib/bibliography.bib</code>, marked <code>merge=union</code>
+          in <code>.gitattributes</code> so two branches can append keys.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">lib/Blog/Site.hs</span>cslFile, bibFile :: String
+cslFile = "bib/style.csl"
+bibFile = "bib/bibliography.bib"
+…
+    match (fromGlob cslFile) $ compile cslCompiler
+    match (fromGlob bibFile) $ compile biblioCompiler</pre>
+          <div class="pair-en">
+            <h3>In the HTML</h3>
+            <ol>
+              <li>In-text <code>[@johnson2025]</code> becomes a numbered citation. A missing key typically renders <code>[?]</code>; Hakyll does not fail.</li>
+              <li>A heading <code>## References</code> with no extra markup is filled by citeproc. The CSS targets <code>#refs</code> and <code>.csl-entry</code>.</li>
+              <li><code>scripts/verify-bib.mjs</code> runs first. It blocks new duplicate keys; a short grandfathered list is still allowed. It cannot catch one paper under two keys.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="math">
+      <div class="wrap">
+        <p class="kicker">06</p>
+        <h2>Math</h2>
+        <p>
+          Build time and browse time are split. Pandoc still has
+          <code>Ext_tex_math_dollars</code>, so <code>$…$</code> in a post
+          becomes <code>\(…\)</code> in the HTML. The browser’s MathJax is
+          configured with dollar delimiters off, so leftover
+          <code>$300K</code> on a static page is not treated as math.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">js/mathjax-config.js</span>window.MathJax = {
+    tex: {
+        inlineMath: [['\\\\(', '\\\\)']],
+        displayMath: [['\\\\[', '\\\\]']],
+        processEscapes: true,
+        packages: {'[+]': ['base', 'ams', 'noerrors', 'noundefined', '[tex]/mhchem']},
+        tags: 'ams'
+    },
+    loader: {
+        load: ['[tex]/mhchem']
+    }
+};</pre>
+          <div class="pair-en">
+            <h3>Where it is loaded</h3>
+            <ol>
+              <li><code>templates/default.html</code> defers <code>mathjax-config.js</code>, then MathJax 3.2.2. The combined bundle has a Subresource Integrity hash. Extra MathJax files (including mhchem) do not.</li>
+              <li>Display math scrolls horizontally (<code>mjx-container</code> in <code>css/default.css</code>).</li>
+              <li>TikZ is not MathJax. Diagrams are already SVG before the page is served.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="mhchem">
+      <div class="wrap">
+        <p class="kicker">06 · chemistry</p>
+        <h2>mhchem</h2>
+        <p>
+          Chemical formulas and equations use the mhchem command
+          <code>\ce{…}</code>. MathJax does not know chemistry by itself.
+          There are two engines. They can disagree.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">posts/2025-01-20-chemical-kinetics.markdown</span>$$\ce{2H2O2 -&gt; 2H2O + O2}$$</pre>
+          <div class="pair-en">
+            <h3>In a sentence</h3>
+            <ol>
+              <li>Pandoc keeps this as math. The browser’s MathJax loads <code>[tex]/mhchem</code> via <code>loader.load</code> in <code>js/mathjax-config.js</code>.</li>
+              <li>LuaLaTeX never sees this line.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">lib/Blog/TikZ.hs</span>  , "\\usepackage[version=4]{mhchem}"</pre>
+          <div class="pair-en">
+            <h3>In a figure</h3>
+            <ol>
+              <li>A <code>\ce{…}</code> inside a <code>```{.tikzpicture}</code> fence is compiled by LuaLaTeX with mhchem v4 and baked into the SVG.</li>
+              <li>MathJax does not typeset that node.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="tikz">
+      <div class="wrap">
+        <p class="kicker">07</p>
+        <h2>TikZ</h2>
+        <p>
+          A fenced block tagged <code>tikzpicture</code> is compiled with
+          LuaLaTeX and converted with <code>dvisvgm --pdf --no-fonts</code>.
+          The SVG is inlined. Only that class hits <code>tikzFilter</code>.
+          Posts with no such block never shell out, so a machine without TeX
+          can still build the rest of the site.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">lib/Blog/TikZ.hs</span>tikzFilter :: Block -&gt; Compiler Block
+tikzFilter (CodeBlock (_, classes, _) contents)
+  | "tikzpicture" `elem` classes = do
+      result &lt;- unsafeCompiler $ renderTikz (T.unpack contents)
+      let html = case result of
+            Right svg -&gt; "&lt;div class=\"tikz-figure\"&gt;" ++ inlineSvg svg ++ "&lt;/div&gt;"
+            Left err  -&gt; "&lt;div class=\"tikz-error\"&gt;&lt;strong&gt;Diagram failed to render.&lt;/strong&gt;"
+                          ++ "&lt;pre&gt;" ++ escapeHtml err ++ "&lt;/pre&gt;&lt;/div&gt;"
+      return $ RawBlock (Format "html") (T.pack html)
+tikzFilter block = return block</pre>
+          <div class="pair-en">
+            <h3>Failure and cache</h3>
+            <ol>
+              <li>A failed diagram does not abort Hakyll. It becomes <code>.tikz-error</code> and a line on stderr. <code>verify-site.mjs</code> later fails CI if the HTML contains the substring <code>class="tikz-error"</code>.</li>
+              <li>Only successful SVGs are cached, in <code>_cache/tikz/</code>, keyed by a hash of preamble plus source. Glyph ids use a hash of the source only. Local <code>site clean</code> deletes the cache. CI restores it after checkout.</li>
+              <li>If the block already contains <code>\begin{tikzpicture}</code> or <code>\begin{circuitikz}</code>, it is used as-is. Otherwise the filter wraps a picture environment around the body. <code>\standaloneenv{circuitikz}</code> is why schematics crop.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">lib/Blog/TikZ.hs</span>  (texCode, texOut, texErr) &lt;- readCreateProcessWithExitCode
+    ( (proc "lualatex"
+        ["-halt-on-error", "-interaction=nonstopmode", "-output-directory=" ++ dir, texFile])
+        { cwd = Just dir }
+    )
+    ""
+…
+      (svgCode, svgOut, svgErr) &lt;- readCreateProcessWithExitCode
+        ( (proc "dvisvgm" ["--pdf", "--no-fonts", "--output=" ++ svgFile, pdfFile])
+            { cwd = Just dir }
+        )</pre>
+          <div class="pair-en">
+            <h3>Id collisions</h3>
+            <ol>
+              <li><code>dvisvgm</code> reuses glyph ids like <code>g3-66</code> in every file.</li>
+              <li>Inlining two SVGs on one page would mix glyphs. <code>namespaceIds</code> prefixes every <code>id</code>, <code>href="#…"</code>, and <code>url(#…)</code> with a hash of that diagram.</li>
+              <li>The unit tests in <code>test/Spec.hs</code> cover <code>inlineSvg</code> and <code>namespaceIds</code>.</li>
+            </ol>
+          </div>
+        </div>
+        <p>
+          The preamble loads <code>tikz</code>, <code>pgfplots</code>,
+          <code>amsmath</code>, <code>mhchem</code>, and
+          <code>circuitikz</code>. That is why chemistry schemes and circuit
+          drawings can live in a Markdown fence.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="metrics">
+      <div class="wrap">
+        <p class="kicker">08</p>
+        <h2>Metrics</h2>
+        <p>
+          Three functions. <code>metricsCompiler</code> validates and
+          publishes each <code>research/*/metrics.json</code> (a WIP file
+          must not use that name). <code>loadPostMetrics</code> runs on every
+          post with <code>experiment:</code>, even with no spans; a missing
+          file fails Hakyll. <code>metricFilter</code> walks inlines.
+          <code>traceable</code> in templates uses
+          <code>loadPostMetricsFor</code> because inside a context field the
+          underlying identifier is the page, not the post.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">lib/Blog/Metrics.hs</span>loadPostMetricsFor :: Identifier -&gt; Compiler (Maybe MetricsDocument)
+loadPostMetricsFor post = do
+  metadata &lt;- getMetadata post
+  case lookupString "experiment" metadata of
+    Nothing -&gt; pure Nothing
+    Just rawSlug -&gt; do
+      …
+      let metricsPath = "research/" ++ rawSlug ++ "/metrics.json"
+      body &lt;- loadBody (fromFilePath metricsPath)</pre>
+          <div class="pair-en">
+            <h3>In the page</h3>
+            <ol>
+              <li>A span must be exactly <code>[name]{.metric}</code> with a name like <code>[a-z][a-z0-9_]*</code>. Extra classes fail the whole build. The output class is <code>metric-value</code> with <code>data-metric</code>.</li>
+              <li><code>verify-site.mjs</code> flags leftover class token <code>metric</code> (the unresolved form). Fixture pages that must match exact strings are the Brewster and microwave notes, not Hillel.</li>
+              <li>Haskell does not re-run Psi4. Node’s <code>verify-metrics.mjs</code> checks hashes, path safety, and that generator <code>--check</code> does not rewrite the file.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="templates">
+      <div class="wrap">
+        <p class="kicker">09</p>
+        <h2>Templates</h2>
+        <p>
+          Hakyll templates are HTML with <code>$field$</code> holes.
+          <code>post.html</code> is the article (tags, date,
+          <code>post-type</code>, <code>status</code>, derived
+          <code>traceable</code>, then <code>$body$</code>).
+          <code>default.html</code> is the document. Script order:
+          theme, topic filter, featured reel, figure cycler, MathJax
+          config, code-copy, then MathJax. Share images are chosen in
+          <code>Blog.Context</code>: YAML <code>og-image</code>, then
+          <code>images/&lt;slug&gt;-og.png</code> if it exists, then the
+          figure <code>src</code>, then the branded card.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">templates/post.html</span>    &lt;div class="post-body"&gt;
+        $body$
+    &lt;/div&gt;
+
+    &lt;div class="post-foot"&gt;
+        &lt;a class="back-link" style="margin:0;" href="/writing.html"&gt;← All writing&lt;/a&gt;
+        &lt;button type="button" class="print-link" onclick="window.print();"&gt;Print / Save as PDF&lt;/button&gt;
+    &lt;/div&gt;</pre>
+          <div class="pair-en">
+            <h3>default.html</h3>
+            <ol>
+              <li>Sets <code>data-theme</code> from localStorage or <code>prefers-color-scheme</code> before paint.</li>
+              <li>Loads <code>/css/site-theme.css</code> then <code>/css/default.css</code>.</li>
+              <li>Loads MathJax, theme toggle, topic filter, featured reel, figure cycler, code-copy.</li>
+              <li><code>$body$</code> is the only main content. For a post, that body is already the rendered <code>post.html</code>.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="screen">
+      <div class="wrap">
+        <p class="kicker">10</p>
+        <h2>Screen and mobile</h2>
+        <p>
+          Two stylesheets. <code>site-theme.css</code> is tokens, header,
+          footer, drawer, buttons. <code>default.css</code> is the notebook:
+          home, archive, article, about, résumé, colophon. Screen colors are
+          CSS variables. One documented hex exception: TikZ sits on a constant
+          light plate because the SVG ink does not flip with the theme.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">css/default.css</span>@media (max-width: 820px) {
+  .featured-grid { grid-template-columns: 1fr; gap: 32px; }
+}
+@media (max-width: 680px) {
+  .masthead-inner { padding: 48px 20px 40px; }
+  …
+  .post { padding: 40px 20px 20px; }
+}
+
+.table-scroll {
+  overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 0 24px;
+  scrollbar-width: none; -ms-overflow-style: none;
+}</pre>
+          <div class="pair-en">
+            <h3>What “mobile” is here</h3>
+            <ol>
+              <li>Below 900px, <code>site-theme.css</code> hides the inline nav and shows the hamburger + drawer.</li>
+              <li>Below 820px the home featured grid stacks. Below 680px article padding tightens.</li>
+              <li>Wide tables scroll inside <code>.table-scroll</code>, which the compiler inserts. That is HTML+CSS, not a second layout engine.</li>
+              <li>Code blocks scroll horizontally. MathJax display math does too.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="print">
+      <div class="wrap">
+        <p class="kicker">11</p>
+        <h2>Print</h2>
+        <p>
+          There is no PDF file. CI never writes one. The article is the same
+          HTML. Posts have a <code>window.print()</code> button in
+          <code>post.html</code>. The résumé has its own button in
+          <code>resume.markdown</code>. The colophon has none (browser File
+          → Print). Three <code>@media print</code> layouts live in
+          <code>css/default.css</code>.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">css/default.css</span>@page { size:letter; margin:0.5in; }
+@media print {
+  :root, [data-theme="dark"] {
+    --display:'Saira Condensed', 'Helvetica Neue', Arial, sans-serif;
+    --label:'Barlow Condensed', 'Helvetica Neue', Arial, sans-serif;
+    --body:'Helvetica Neue', Arial, sans-serif;
+    …
+  }
+  .np-header, .np-footer, .np-themetoggle, .np-skiplink, .np-scrim, .np-drawer,
+  .site-header, .site-footer, .theme-toggle, .back-link, .post-foot,
+  .print-link, .copy-button, .archive-link { display:none !important; }
+
+  .post-body h2::before { content:""; position:absolute; left:0; top:0.12em; width:9px; height:9px; background:#362C17 !important; }</pre>
+          <div class="pair-en">
+            <h3>What changes on paper</h3>
+            <ol>
+              <li>US Letter, 0.5 in margin. Saira and Barlow load with <code>media="print"</code>. JetBrains Mono is a screen Google Font and is also the print <code>--mono</code>.</li>
+              <li>Post print: hide nav/footer/buttons, cream code, square ticks on <code>.post-body h2</code> (Saira/Barlow/Helvetica).</li>
+              <li>Résumé print: Arial body, Saira title, hides <code>.resume-print</code>.</li>
+              <li>Colophon print: restyles <code>.method-*</code>, keeps Bricolage, does not use the condensed post stack.</li>
+            </ol>
+          </div>
+        </div>
+        <p>
+          <code>site-theme.css</code> also has a short print rule: hide
+          header/footer/theme toggle and force a white body. The article look
+          is the longer block in <code>default.css</code>.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="tests">
+      <div class="wrap">
+        <p class="kicker">12</p>
+        <h2>stack test</h2>
+        <p>
+          <code>test/Spec.hs</code> does not run Hakyll. It checks pure
+          helpers: SVG inlining, id prefixing, table wrapping, metrics JSON
+          parsing and formatting, og:image choice. CI runs it before
+          <code>site build</code>.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="verify">
+      <div class="wrap">
+        <p class="kicker">13</p>
+        <h2>verify-*.mjs</h2>
+        <p>
+          Three Node scripts. They are not Hakyll. They run in CI around the
+          Haskell build.
+        </p>
+        <ul>
+          <li><code>verify-bib.mjs</code> — duplicate citation keys on the source bib, before the expensive build. A grandfathered set is allowed. One paper under two keys is not caught.</li>
+          <li><code>verify-metrics.mjs</code> — after <code>site build</code> in CI: hashes, <code>experiment</code> equals the directory name, path safety, 30s generator timeout, <code>--check</code> must not delete or rewrite the file.</li>
+          <li><code>verify-site.mjs</code> — substring <code>class="tikz-error"</code>; leftover class token <code>metric</code> (not <code>metric-value</code>); internal <code>href</code>/<code>src</code>; each <code>PUBLIC_FILES.txt</code> path as a regular file in <code>_site</code>; og/twitter 1200×630 on pages with <code>twitter:card</code>; exact metric strings on <code>posts/2026-07-20-from-script-to-sentence.html</code> and the microwave-oven note.</li>
+        </ul>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">scripts/verify-site.mjs</span>  if (html.includes('class="tikz-error"')) {
+    errors.push(`${label}: contains a failed TikZ diagram`);
+  }
+
+  const hasUnresolvedMetric = [...html.matchAll(/class="([^"]*)"/g)]
+    .some((match) =&gt; match[1].split(/\s+/).includes('metric'));
+  if (hasUnresolvedMetric) {
+    errors.push(`${label}: contains an unresolved experiment metric`);
+  }</pre>
+          <div class="pair-en">
+            <h3>Why this sits outside Haskell</h3>
+            <ol>
+              <li>Hakyll can emit a TikZ error box and keep going. The Node check is the gate that refuses to publish it.</li>
+              <li>Link checking walks the generated HTML, including relative URLs from <code>relativizeUrls</code>.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="deploy">
+      <div class="wrap">
+        <p class="kicker">14</p>
+        <h2>Deploy</h2>
+        <p>
+          One workflow: <code>.github/workflows/deploy.yml</code>. It runs on
+          push to <code>main</code>, on pull requests to <code>main</code>,
+          and on <code>workflow_dispatch</code>. Pull requests build and
+          verify. Only non-PR runs upload Pages.
+        </p>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">.github/workflows/deploy.yml</span>    - name: Build, test, and verify generated output
+      run: |
+        node scripts/verify-bib.mjs
+        stack test
+        stack exec site build
+        node scripts/verify-metrics.mjs
+        node scripts/verify-site.mjs
+
+    - name: Add CNAME and .nojekyll
+      if: github.event_name != 'pull_request'
+      run: |
+        echo "pvjohnston.com" &gt; _site/CNAME
+        touch _site/.nojekyll</pre>
+          <div class="pair-en">
+            <h3>Job shape</h3>
+            <ol>
+              <li><code>build</code> on ubuntu-latest, 60 minute timeout. Stack from <code>haskell-actions/setup</code>, GHC from the snapshot, not a second setup-installed compiler.</li>
+              <li>Caches: Stack keyed on <code>stack.yaml.lock</code> + cabal; apt <code>.deb</code>s; TikZ path <code>_cache/tikz</code> with Actions key including <code>github.run_id</code> (primary key never hits; <code>restore-keys</code> does). Files inside the TikZ cache are content-addressed.</li>
+              <li>TeX: <code>texlive-latex-extra</code>, pictures, science, luatex, <code>texlive-plain-generic</code>, <code>texlive-fonts-recommended</code>, <code>dvisvgm</code>, <code>mupdf-tools</code> (mutool, dvisvgm’s PDF backend).</li>
+              <li>The checkout has no Hakyll store, so <code>site build</code> is a clean site. The TikZ cache is restored after checkout (the opposite of local <code>site clean</code>).</li>
+            </ol>
+          </div>
+        </div>
+        <div class="pair">
+          <pre class="pair-code"><span class="file">.github/workflows/deploy.yml</span>  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    …
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      continue-on-error: true
+      uses: actions/deploy-pages@v4</pre>
+          <div class="pair-en">
+            <h3>Pages</h3>
+            <ol>
+              <li>Source is GitHub Actions, not a <code>gh-pages</code> branch. Comment in the file: force-pushing that branch was flaky.</li>
+              <li><code>actions/upload-pages-artifact</code> packs <code>_site</code>. <code>actions/deploy-pages@v4</code> publishes it.</li>
+              <li>Concurrency group <code>pages</code>, <code>cancel-in-progress: false</code>.</li>
+              <li>If deploy fails, the workflow sleeps 30 seconds and retries once. Comment: the Pages backend has rejected a fresh artifact with no diagnostics; a rerun of the same tarball then succeeded.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="flow">
+      <div class="wrap">
+        <p class="kicker">15</p>
+        <h2>Map · .md to HTML and print</h2>
+        <p>
+          One Markdown file does not have a single destination. Branches
+          below are the ones in the compiler and CI. There is no generated
+          PDF; print is the same HTML plus CSS.
+        </p>
+        <p class="flow-legend">
+          <span><b class="lg-run"></b> runs</span>
+          <span><b class="lg-exit"></b> exit / fail</span>
+          <span><b class="lg-browser"></b> browser only</span>
+        </p>
+        <ol class="flow">
+          <li>
+            <h3>Source</h3>
+            <p><code>posts/*.md</code> or a static page (<code>about.markdown</code>, <code>resume.markdown</code>, <code>contact.markdown</code>, <code>colophon.markdown</code>).</p>
+          </li>
+          <li class="exit">
+            <h3>Exit · draft</h3>
+            <p>If YAML is exactly <code>draft: true</code> and <code>PREVIEW_DRAFTS</code> is unset, the file never enters the store. No HTML, listing, feed, or sitemap row. CI does not set the env.</p>
+          </li>
+          <li>
+            <h3>Branch · static page</h3>
+            <p><code>pandocCompiler</code> → <code>templates/default.html</code> only. No citeproc, metrics, TikZ, or <code>post.html</code>. Still gets MathJax chrome. Résumé print CSS applies if you print that page.</p>
+          </li>
+          <li>
+            <h3>Branch · post</h3>
+            <p><code>bibtexMathCompiler</code>, then snapshot, then two templates.</p>
+            <ul class="kids">
+              <li>Citations: <code>[@key]</code> → numbered, or <code>[?]</code> if missing. Does not fail Hakyll. Duplicate keys: <code>verify-bib.mjs</code> first.</li>
+              <li>Metrics: YAML <code>experiment:</code> loads <code>research/&lt;slug&gt;/metrics.json</code>. Missing file or bad <code>[name]{.metric}</code> → Hakyll <code>fail</code> (whole build).</li>
+              <li>TikZ: class <code>tikzpicture</code> only → LuaLaTeX + mhchem v4 + <code>dvisvgm</code> → inline SVG. Failure → <code>.tikz-error</code>, Hakyll continues.</li>
+              <li>Math in prose: Pandoc emits <code>\(…\)</code> / <code>\[…\]</code> (including from <code>$…$</code>).</li>
+              <li>Chemistry in prose: <code>\ce{…}</code> stays TeX for the browser. Not LuaLaTeX.</li>
+              <li>Tables wrap in <code>.table-scroll</code>. pygments on code.</li>
+            </ul>
+          </li>
+          <li>
+            <h3>_site HTML</h3>
+            <p><code>posts/….html</code> plus copied images, CSS, JS, fonts, allowlisted <code>research/</code> files, feeds, sitemap.</p>
+          </li>
+          <li class="exit">
+            <h3>Exit · CI after build</h3>
+            <p><code>verify-metrics.mjs</code> (hashes). <code>verify-site.mjs</code>: leftover <code>tikz-error</code> or class <code>metric</code>, missing links, missing allowlisted files, fixture metric strings, og:image size. A TikZ miss that Hakyll swallowed dies here.</p>
+          </li>
+          <li class="exit">
+            <h3>Exit · pull request</h3>
+            <p>Build and verify only. No CNAME, no Pages artifact, no deploy.</p>
+          </li>
+          <li>
+            <h3>main · Pages</h3>
+            <p>Write <code>_site/CNAME</code> and <code>.nojekyll</code>. Upload artifact. <code>deploy-pages@v4</code>. On failure, sleep 30s and retry once.</p>
+          </li>
+          <li class="browser">
+            <h3>Browser · MathJax + mhchem</h3>
+            <p>Config, then MathJax 3.2.2. <code>loader.load ['[tex]/mhchem']</code>. Dollars off at this layer. Typesets body math and <code>\ce{…}</code>. Does not re-touch TikZ SVG.</p>
+          </li>
+          <li class="browser">
+            <h3>Browser · print</h3>
+            <p><code>window.print()</code> or File → Print. Same HTML. Post / résumé / colophon each have their own <code>@media print</code> block. No <code>.pdf</code> is written to disk.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section" id="pass">
+      <div class="wrap">
+        <p class="kicker">16</p>
+        <h2>This pass</h2>
+        <p>
+          Read from
+          <a href="https://github.com/noprofits-org/pvjohnston.com">noprofits-org/pvjohnston.com</a>
+          at <code>d3ba5c69</code>. A second pass checked the page against
+          that repo (compiler path, CSS/print/deploy). Added mhchem as its
+          own section, the flow map, and the gaps that were load-bearing:
+          two chemistry engines, no PDF artifact, draft skip, metric hard
+          fail vs TikZ soft fail, <code>loader.load</code>, print layouts,
+          CI TeX list, verify fixtures.
+        </p>
+        <p>
+          Still not a full dump of every CSS token or JS helper.
+          <code>scripts/render-og-cards.py</code> and Hakyll internals remain
+          off this page. The protocol for a note is on
+          <a href="./">the lab page</a>.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p class="footer-word">pvjohnston.github.io</p>
+      <p>
+        First pass of the build notes. Source commit
+        <code>d3ba5c69</code>.
+        <a href="SOURCES.md">SOURCES.md</a>.
+      </p>
+    </div>
+  </footer>
+  <script src="main.js"></script>
+</body>
+</html>
