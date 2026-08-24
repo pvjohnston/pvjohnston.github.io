@@ -30,9 +30,9 @@
         <p class="kicker">Peter V. Johnston</p>
         <h1>How pvjohnston.com is made</h1>
         <p class="lede">
-          <a href="https://pvjohnston.com">pvjohnston.com</a> is a published
-          notebook of private chemistry and computation. This site is Peter’s
-          personal GitHub Pages. It shows the files, the people, and the Mac.
+          This page shows how a note gets from a paper to the
+          <a href="https://pvjohnston.com">notebook</a> — the files, the named
+          assistants, and the computer that runs the jobs.
         </p>
       </div>
     </header>
@@ -98,6 +98,11 @@
           the public site. They do not replace the calculations. Those still
           run on my Mac.
         </p>
+        <p>
+          A run has six steps. Johnson is frozen after step 02. Steps 03–06
+          have not started. The finished example of those later steps is the
+          <a href="https://pvjohnston.com/posts/2026-08-22-does-push-pull-abolish-the-s0-t1-crossing.html">Hillel note</a>.
+        </p>
         <ol class="pipeline" aria-label="A chemistry run">
           <li class="step">
             <span class="step-n">01</span>
@@ -113,39 +118,35 @@
               <p><code>johnson-haloacetate</code>, frozen 2026-08-23, before any geometry is optimized.</p>
             </div>
           </li>
-          <li class="step">
+          <li class="step pending">
             <span class="step-n">03</span>
             <div>
               <h3>Jobs on the Mac</h3>
-              <p>Private folder. Psi4. Not the chat.</p>
+              <p>Private folder. Psi4. Not the chat. Not started for Johnson.</p>
             </div>
           </li>
-          <li class="step gate">
+          <li class="step gate pending">
             <span class="step-n">04</span>
             <div>
               <h3>Bayes</h3>
-              <p>Only trusts numbers that come out of the raw output files.</p>
+              <p>Only trusts numbers that come out of the raw output files. Not started for Johnson.</p>
             </div>
           </li>
-          <li class="step gate">
+          <li class="step gate pending">
             <span class="step-n">05</span>
             <div>
               <h3>da Vinci</h3>
-              <p>Draws the figures from those numbers, and only from points that actually converged.</p>
+              <p>Draws the figures from those numbers, and only from points that actually converged. Not started for Johnson.</p>
             </div>
           </li>
-          <li class="step">
+          <li class="step pending">
             <span class="step-n">06</span>
             <div>
               <h3>The site</h3>
-              <p>Published notebook of the private run.</p>
+              <p>Published notebook of the private run. Not started for Johnson.</p>
             </div>
           </li>
         </ol>
-        <p>
-          Johnson is the live freeze; steps 03–06 have not happened yet, and
-          the finished example is the <a href="#code">Hillel note already linked</a>.
-        </p>
         <p>
           Two files.
           <a href="lab/johnson-haloacetate/PREREGISTRATION.md"><code>PREREGISTRATION.md</code></a>
@@ -248,7 +249,8 @@ Plotted lines connect adjacent both-converged points only. Unconverged points ma
           </article>
         </div>
         <p>
-          Calculations run on the Mac.
+          Calculations run on the Mac. The snippet below is from the finished
+          Hillel note, not from Johnson.
         </p>
         <div class="pair">
           <pre class="pair-code"><span class="file">research/hillel-triplet/make_figures.py</span>both_ok = [ok0 and ok1 and g is not None for ok0, ok1, g in zip(s0_ok, t1_ok, gaps)]
@@ -354,8 +356,7 @@ if (actual !== String(input.sha256).toLowerCase()) {
     <div class="wrap">
       <p class="footer-word">pvjohnston.github.io</p>
       <p>
-        Draft. Sources: the public notebook, Heisenberg’s 2026-08-23 brief, and
-        the johnson-haloacetate PLAN and preregistration from the same day.
+        Draft. Built from the public notebook and the 2026-08-23 Johnson freeze.
         <a href="SOURCES.md">SOURCES.md</a>.
       </p>
       <p>

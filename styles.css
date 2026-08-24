@@ -280,6 +280,16 @@ a:hover { color: var(--accent); }
   background: var(--sky-tint);
   border-left: 3px solid var(--accent);
 }
+.step.pending {
+  opacity: 0.62;
+}
+.step.pending .step-n {
+  color: var(--muted);
+}
+.step.pending.gate {
+  background: transparent;
+  border-left-color: var(--border);
+}
 
 .pair {
   display: grid;
